@@ -12,8 +12,6 @@ dotnet publish GSBC.WirecastNDI/GSBC.WirecastNDI.csproj -c Release -r win-x64 --
   -o "$out"
 
 cp deploy/install.ps1 deploy/uninstall.ps1 deploy/Install.cmd README.md "$out/"
-# Windows wants CRLF in .cmd files.
-sed -i '' 's/$/\r/' "$out/Install.cmd"
 
 (cd "$out" && zip -qr ../GSBC.WirecastNDI-win-x64.zip .)
 echo "Built artifacts/GSBC.WirecastNDI-win-x64.zip"

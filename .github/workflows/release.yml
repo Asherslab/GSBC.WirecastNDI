@@ -1,0 +1,64 @@
+name: Release
+
+# Push a tag like v1.2.0, or run manually from the Actions tab with a version number.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out version
+        shell: pwsh
+        run: |
+          $v = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.version }}' } else { '${{ github.ref_name }}' }
+          $v = $v.Trim().TrimStart('v')
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Version '$v' must look like 1.2.3" }
+          "VERSION=$v" >> $env:GITHUB_ENV
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Check PowerShell scripts parse
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($f in Get-ChildItem deploy -Filter *.ps1) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors) | Out-Null
+            foreach ($e in $errors) { Write-Host "::error file=deploy/$($f.Name),line=$($e.Extent.StartLineNumber)::$($e.Message)"; $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish GSBC.WirecastNDI/GSBC.WirecastNDI.csproj -c Release -r win-x64 --self-contained `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None `
+            -p:Version=$env:VERSION -o out
+          Copy-Item deploy/install.ps1, deploy/uninstall.ps1, deploy/Install.cmd, README.md out/
+          if (Test-Path out/appsettings.Local.json) { throw 'Dev-only appsettings.Local.json leaked into the release' }
+          Compress-Archive -Path out/* -DestinationPath "GSBC.WirecastNDI-$env:VERSION-win-x64.zip"
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$env:VERSION" "GSBC.WirecastNDI-$env:VERSION-win-x64.zip" `
+            --target '${{ github.sha }}' --title "v$env:VERSION" --generate-notes

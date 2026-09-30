@@ -42,10 +42,10 @@ Wirecast ──► Wirecast Virtual Camera ─┐                               
 
 ## Install
 
-1. Build the release zip on any machine with the .NET 10 SDK: `./publish.sh`. This produces
-   `artifacts/GSBC.WirecastNDI-win-x64.zip`.
-2. On the Wirecast PC, install the NDI Runtime and ffmpeg (see above).
-3. Unzip the release and double-click **`Install.cmd`**, then accept the admin prompt.
+1. On the Wirecast PC, install the NDI Runtime and ffmpeg (see above).
+2. Download the latest `GSBC.WirecastNDI-x.y.z-win-x64.zip` from
+   [Releases](https://github.com/Asherslab/GSBC.WirecastNDI/releases/latest).
+3. Unzip it and double-click **`Install.cmd`**, then accept the admin prompt.
    Optionally, drop `ffmpeg.exe` into the unzipped folder first, or run
    `install.ps1 -FfmpegExe C:\path\to\ffmpeg.exe`.
 4. In Wirecast, turn on **Output → Virtual Camera** and **Virtual Microphone**. Make sure they are
@@ -134,6 +134,13 @@ pipeline, runs on macOS against a test pattern. Copy `appsettings.Local.example.
 dotnet run --project GSBC.WirecastNDI                       # publishes "WirecastNDI Test"
 dotnet run --project GSBC.WirecastNDI -- probe "WirecastNDI Test"
 dotnet test
+./publish.sh                                                # local Windows zip in artifacts/
 ```
+
+### Releasing
+
+Push a version tag (`git tag v1.2.0 && git push origin v1.2.0`), or run the **Release** workflow
+from the Actions tab. It builds on Windows, runs the tests, checks that the PowerShell scripts
+parse, and attaches the zip to a GitHub release.
 
 NDI® is a registered trademark of Vizrt NDI AB.
