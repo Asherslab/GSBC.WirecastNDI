@@ -39,6 +39,16 @@ public class VideoConfig
     /// <summary>"30", "60", "29.97", "59.94", "25", "50" or an exact "N/D" such as "30000/1001".</summary>
     public string FrameRate { get; set; } = "30";
 
+    /// <summary>
+    /// How the captured picture is fitted to Width x Height.
+    /// "Stretch" (default): fill the frame. Right for a virtual camera, whose frame shape often
+    /// doesn't match the picture inside it (e.g. a 16:9 canvas squeezed into a 4:3 format).
+    /// "Fit": keep the input's shape and add black bars.
+    /// </summary>
+    public string ScaleMode { get; set; } = "Stretch";
+
+    public bool Letterbox => ScaleMode.Equals("Fit", StringComparison.OrdinalIgnoreCase);
+
     public (int N, int D) ParseFrameRate()
     {
         string s = FrameRate.Trim();
@@ -84,6 +94,13 @@ public class CaptureConfig
 
     /// <summary>DirectShow audio device. If not found, the first device containing "Wirecast" is used.</summary>
     public string AudioDevice { get; set; } = "Wirecast Virtual Microphone";
+
+    /// <summary>
+    /// Ask the camera for Video.Width x Video.Height instead of its default format (which may be a
+    /// small 4:3 size). If the device refuses, the app falls back to the default automatically.
+    /// Ignored when InputOptions already contains -video_size.
+    /// </summary>
+    public bool RequestVideoSize { get; set; } = true;
 
     /// <summary>Extra ffmpeg input options placed before -i, e.g. "-video_size 1920x1080 -framerate 30".</summary>
     public string? InputOptions { get; set; }

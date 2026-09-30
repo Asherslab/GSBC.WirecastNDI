@@ -34,15 +34,16 @@ public sealed class BridgeWorker(IOptions<BridgeConfig> options, ILogger<BridgeW
         Task statsTask = LogStatsAsync(sender, statsCts.Token);
 
         int consecutiveFailures = 0;
+        bool requestVideoSize = _config.Capture.RequestVideoSize;
 
         while (!stoppingToken.IsCancellationRequested)
         {
             DateTime started = DateTime.UtcNow;
             string reason;
+            var session = new CaptureSession(_config, sender, _stats, logger, requestVideoSize);
 
             try
             {
-                var session = new CaptureSession(_config, sender, _stats, logger);
                 reason = await session.RunAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -56,6 +57,15 @@ public sealed class BridgeWorker(IOptions<BridgeConfig> options, ILogger<BridgeW
 
             if (stoppingToken.IsCancellationRequested)
                 break;
+
+            if (session.VideoSizeRejected && requestVideoSize)
+            {
+                logger.LogWarning(
+                    "The camera doesn't offer {Width}x{Height}; capturing at its default size and scaling instead",
+                    _config.Video.Width, _config.Video.Height);
+                requestVideoSize = false;
+                continue;
+            }
 
             // A session that ran for a while was healthy; start counting again.
             consecutiveFailures = DateTime.UtcNow - started > TimeSpan.FromMinutes(1) ? 1 : consecutiveFailures + 1;

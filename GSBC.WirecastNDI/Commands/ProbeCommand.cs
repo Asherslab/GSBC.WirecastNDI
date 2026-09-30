@@ -100,8 +100,8 @@ public static class ProbeCommand
             int sampleRate = 0, channels = 0;
             float peak = 0;
             TimeSpan? firstVideo = null, lastVideo = null;
-            double lumaSum = 0;
-            long lumaCount = 0;
+            double lumaSum = 0, edgeLeftSum = 0, edgeRightSum = 0;
+            long lumaCount = 0, edgeCount = 0;
 
             var clock = Stopwatch.StartNew();
             while (clock.Elapsed < TimeSpan.FromSeconds(seconds))
@@ -126,6 +126,12 @@ public static class ProbeCommand
                                 lumaSum += row[x];
                                 lumaCount++;
                             }
+
+                            // Luma 2% in from each side: 16 there means black bars (pillarboxing).
+                            int edge = video.xres / 50;
+                            edgeLeftSum += row[edge * 2 + 1];
+                            edgeRightSum += row[(video.xres - 1 - edge) * 2 + 1];
+                            edgeCount++;
                         }
 
                         NDIlib.recv_free_video_v2(recv, ref video);
@@ -156,7 +162,8 @@ public static class ProbeCommand
 
             Console.WriteLine($"Video: {videoFrames} frames, {xres}x{yres}, declared {rateN}/{rateD} " +
                               $"({(rateD == 0 ? 0 : (double)rateN / rateD):0.##} fps), measured {measuredFps:0.##} fps, " +
-                              $"mid-row luma avg {(lumaCount == 0 ? 0 : lumaSum / lumaCount):0} (16 = black)");
+                              $"mid-row luma avg {(lumaCount == 0 ? 0 : lumaSum / lumaCount):0}, " +
+                              $"left/right edge {(edgeCount == 0 ? 0 : edgeLeftSum / edgeCount):0}/{(edgeCount == 0 ? 0 : edgeRightSum / edgeCount):0} (16 = black)");
             Console.WriteLine($"Audio: {audioSamples} samples, {sampleRate} Hz x{channels}, " +
                               $"peak {(peak <= 0 ? "-inf" : (20 * Math.Log10(peak)).ToString("0.0"))} dBFS");
 

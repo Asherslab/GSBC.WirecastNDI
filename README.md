@@ -21,8 +21,8 @@ Wirecast ──► Wirecast Virtual Camera ─┐                               
   The app retries every 5 s, backing off to at most 60 s.
 - **Audio and video share one DirectShow clock.** A single ffmpeg process captures both, and the
   audio is resampled continuously (`aresample=async`) so it doesn't drift.
-- **Fixed output format.** Whatever resolution Wirecast outputs, the source is scaled and letterboxed
-  to the configured size and frame rate, using the BT.709 colour that NDI receivers expect for HD.
+- **Fixed output format.** Whatever resolution Wirecast outputs, the camera is asked for the
+  configured size, then the picture is scaled to the configured size and frame rate, using the BT.709 colour that NDI receivers expect for HD.
 - **Stall watchdog.** If no video frame arrives for 10 s, ffmpeg is killed and restarted.
 - **Self-healing startup.** A scheduled task starts the app at every logon and checks every 5
   minutes that it is still running. A mutex stops a second copy from starting.
@@ -93,13 +93,15 @@ can run it on any machine that has the NDI runtime. NDI Studio Monitor also work
 | `Ndi.Groups` | *(empty = public)* | Comma-separated NDI groups |
 | `Ndi.SendBlackWhenIdle` | `true` | Black instead of a frozen frame while capture is down |
 | `Ndi.LibraryPath` | | Only if the NDI runtime is somewhere unusual |
-| `Video.Width` / `Video.Height` | `1920` / `1080` | Output size; input is scaled and letterboxed to fit |
+| `Video.Width` / `Video.Height` | `1920` / `1080` | Output size. See `Video.ScaleMode` for how the input is fitted |
 | `Video.FrameRate` | `30` | `25`, `29.97`, `30`, `50`, `59.94`, `60`, or exact `N/D` |
+| `Video.ScaleMode` | `Stretch` | `Stretch` fills the frame. `Fit` keeps the input's shape and adds black bars. A virtual camera's frame shape often doesn't match its picture, so Stretch is usually right |
 | `Audio.Enabled` | `true` | |
 | `Audio.SampleRate` / `Audio.Channels` | `48000` / `2` | |
 | `Audio.DelayMs` | `0` | Delays audio if it arrives ahead of the picture (lip-sync) |
 | `Capture.VideoDevice` | `Wirecast Virtual Camera` | If not found exactly, the first device containing "Wirecast" is used |
 | `Capture.AudioDevice` | `Wirecast Virtual Microphone` | Same fallback. If none is found, the app runs video-only |
+| `Capture.RequestVideoSize` | `true` | Asks the camera for `Video.Width`×`Video.Height` instead of its default format. Falls back automatically if the camera refuses |
 | `Capture.InputOptions` | | Extra DirectShow options, e.g. `-video_size 1920x1080 -framerate 30` |
 | `Capture.AudioBufferMs` | `40` | DirectShow audio buffer. ffmpeg's default of about 500 ms adds latency |
 | `Capture.FfmpegPath` | `ffmpeg` | Found next to the exe first, then on PATH |
@@ -119,6 +121,7 @@ Start with the newest file in `C:\ProgramData\GSBC.WirecastNDI\logs`.
 | Source is visible but black | Wirecast's Virtual Camera output isn't turned on, or Wirecast isn't running |
 | `real-time buffer too full` warnings | The PC can't keep up. Lower `Video.FrameRate` or the resolution |
 | Source not visible on other machines | Different subnet or VLAN, a firewall on the receiver, or an NDI groups mismatch |
+| Picture squished, with black bars left and right | The camera is delivering a 4:3 format. Check the `ffmpeg input:` line in the log, and make sure `Video.ScaleMode` is `Stretch` |
 | Audio ahead of video | Raise `Audio.DelayMs` in steps of 20–40 ms |
 
 To see what the Wirecast virtual camera itself offers:
