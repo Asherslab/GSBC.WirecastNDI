@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+.idea/
+.vs/
+*.user
+*.DotSettings.user
+.nodeterm/
+# Per-developer overrides (see appsettings.Local.example.json)
+appsettings.Local.json
